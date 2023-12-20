@@ -1,0 +1,60 @@
+!src/mkdocs_github_changelog/*
+# SCM versions
+src/mkdocs_github_changelog/_version.py
+
+# Compiled files
+*.pyc
+*.nfs*
+*.egg-info
+*.csv
+*.pyd
+*.log
+*/PKG-INFO
+*.so
+*.c
+
+# Build folder
+./build/*
+build/*
+
+# Dist folder
+./dist/*
+dist/*
+
+# Built Docs
+docs/html/*
+docs/pdf/*
+docs/epub/*
+*.doctree
+
+# Downloaded Wheels
+wheelhouse/*
+
+# Env files
+*.envrc/*
+.env
+env/**
+
+# Reports
+reports/*-py*
+.coverage
+reports/*
+test-reports/*
+
+# IDE files
+.idea/*
+
+# Compiled requirements & Pipenv
+Pipfile
+frozen_requirements.txt
+Pipfile.lock
+
+# Virtualenv
+.venv/*
+\.venv/
+
+# Utility Helper folders
+.pytest_cache/*
+.mypy_cache/*
+mypy
+.nox/*

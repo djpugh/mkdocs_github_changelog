@@ -1,0 +1,70 @@
+site_name: mkdocs_github_changelog
+repo_url: https://github.com/djpugh/mkdocs_github_changelog
+
+edit_uri: blob/main/docs/source/
+
+docs_dir: ./source
+site_dir: ./html
+nav:
+ - index.md
+ - usage.md
+ - 'Developing':
+    - developing/index.md
+    
+    - developing/license.md
+    
+    - 'Test Coverage': coverage.md
+
+ - 'Issue Tracker': https://github.com/djpugh/mkdocs_github_changelog/issues
+
+exclude_docs: |
+  mkdocs.yml
+theme:
+  name: material
+  # icon:
+  #  logo: material/family-tree
+  # favicon: assets/images/favicon.ico
+  features:
+    - navigation.instant
+    - navigation.prefetch
+    - navigation.progress
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.path
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - search.share
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      enable_inventory: true
+      handlers:
+        python:
+          paths: [src]
+  # https://github.com/jimporter/mike
+  - mike:
+      canonical_version: latest
+  # https://github.com/pawamoy/mkdocs-coverage
+  - coverage:
+      page_name: coverage  # default
+      html_report_dir: reports/htmlcov
+  # https://github.com/timvink/mkdocs-git-revision-date-localized-plugin
+  - git-revision-date-localized:
+      exclude:
+        - coverage.md
+      type: iso_date
+  - include-markdown
+  # https://github.com/mondeja/mkdocs-include-markdown-plugin
+
+# https://mkdocstrings.github.io/recipes/#automatic-code-reference-pages
+
+extra:
+  version:
+    provider: mike
