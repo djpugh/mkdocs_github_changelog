@@ -1,0 +1,28 @@
+- context:
+    repo:
+      repo_separator: '-'
+      owner: David J Pugh
+      email: djpugh@gmail.com
+      description: mkdocs extension to autogenerate changelog from github
+      url: https://github.com/djpugh/mkdocs_github_changelog
+      module_depth: 1
+      name: mkdocs_github_changelog
+      py_name: mkdocs_github_changelog
+      py_root: mkdocs_github_changelog
+      src_path: mkdocs_github_changelog
+    git:
+      initial_branch_name: main
+      git_flow: true
+      default_branch: develop
+    language: python
+    license: mit
+    recipe:
+      name: nskit.recipes.python.package:PackageRecipe
+      version: 0.0.post1.dev14+g7e85d99.d20231220
+      extension_name: python_package
+  nskit_version: 0.0.post1.dev14+g7e85d99.d20231220
+  creation_time: '2023-12-20T10:23:32.431319+00:00'
+  recipe:
+    name: nskit.recipes.python.package:PackageRecipe
+    version: 0.0.post1.dev14+g7e85d99.d20231220
+    extension_name: python_package
