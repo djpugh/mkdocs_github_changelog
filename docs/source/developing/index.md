@@ -1,5 +1,11 @@
 # Contributing to mkdocs_github_changelog
 
+We love contributions to ``mkdocs_github_changelog``
+
+## Issues
+
+Please raise issues, queries or discussions [here](https://github.com/djpugh/mkdocs_github_changelog/issues).
+
 ## Contributing to the codebase
 
 ### Installation and setup

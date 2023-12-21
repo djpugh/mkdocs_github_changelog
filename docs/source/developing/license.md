@@ -1,7 +1,7 @@
 
 # License
 
-``mkdocs_github_changelog`` is licensed under the LICENSEOPTIONSENUM.MIT License
+``mkdocs_github_changelog`` is licensed under the MIT License
 
 ```
 {%

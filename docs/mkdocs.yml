@@ -7,22 +7,19 @@ docs_dir: ./source
 site_dir: ./html
 nav:
  - index.md
- - usage.md
  - 'Developing':
     - developing/index.md
-    
     - developing/license.md
-    
     - 'Test Coverage': coverage.md
-
  - 'Issue Tracker': https://github.com/djpugh/mkdocs_github_changelog/issues
+ - changelog.md
 
 exclude_docs: |
   mkdocs.yml
 theme:
   name: material
-  # icon:
-  #  logo: material/family-tree
+  icon:
+   logo: octicons/log-16
   # favicon: assets/images/favicon.ico
   features:
     - navigation.instant
@@ -62,7 +59,7 @@ plugins:
       type: iso_date
   - include-markdown
   # https://github.com/mondeja/mkdocs-include-markdown-plugin
-
+  - mkdocs_github_changelog
 # https://mkdocstrings.github.io/recipes/#automatic-code-reference-pages
 
 extra:

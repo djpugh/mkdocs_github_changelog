@@ -1,0 +1,22 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: "pip" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "daily"
+
+    allow:
+      # Allow both direct and indirect updates for all packages
+      - dependency-type: "all"
+    labels:
+      - "chore"
+      - "dependencies"
+    # There is no dependabot automerge option here, but instead a workflow is used
+    # This can't easily be configured for different upgrade types
+    # Relies on branch protections to ensure merge is safe (c.f. renovate where it can
+    # be configured, but still relies on branch protections)
