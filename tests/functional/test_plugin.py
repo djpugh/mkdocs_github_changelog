@@ -117,7 +117,7 @@ plugins:
             # webbrowser.open(str(Path('html', 'index.html').absolute()))
             index_html = Path('html', 'index.html')
             webbrowser.open(str(index_html.absolute()))
-            contents = index_html.read_text()
+            contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="020"><a href="https://www.google.com">0.2.0</a></h3>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
             self.assertIn('<h4 id="020_1"><a href="https://www.google.com">0.2.0</a></h4>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
             self.assertIn('<h1 id="020_2"><a href="https://www.google.com">0.2.0</a></h1>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
@@ -199,7 +199,7 @@ plugins:
 
             index_html = Path('html', 'index.html')
             webbrowser.open(str(index_html.absolute()))
-            contents = index_html.read_text()
+            contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="release-0122"><a href="https://github.com/djpugh/fastapi_aad_auth/releases/tag/0.1.22">Release 0.1.22</a></h3>', contents)
             self.assertIn('<p><em>Released at 2022-04-17T14:22:48+00:00</em>', contents)
             self.assertIn('<h4 id="release-0122_1"><a href="https://github.com/djpugh/fastapi_aad_auth/releases/tag/0.1.22">Release 0.1.22</a></h4>', contents)
