@@ -72,7 +72,8 @@ dev-test= [
     "pytest-cov>=4",
     "pytest-subtests",
     # Run tests in parallel
-    "pytest-xdist"
+    "pytest-xdist",
+    "mkdocs-material"
     ]
 dev-docs = [
     "mkdocs",

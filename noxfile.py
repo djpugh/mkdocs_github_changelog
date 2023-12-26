@@ -72,8 +72,8 @@ def test(session):
     else:
         test_folder = ['tests']
     session.install('.[dev,dev-test]')
-    args = []
     for folder in test_folder:
+        args = []
         args.append('-rs')
         args.append(folder)
         print(f'Test session: {folder}')
