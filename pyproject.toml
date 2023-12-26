@@ -35,6 +35,7 @@ dependencies = [
     'typing-extensions; python_version < "3.12"',
     'backports.entry-points-selectable; python_version < "3.10"',
     'importlib_metadata; python_version < "3.11"',
+    'python-dateutil; python_version < "3.11"'
 ]
 
 dynamic = ["version"]

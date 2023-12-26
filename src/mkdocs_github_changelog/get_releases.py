@@ -12,6 +12,10 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
 else:
     from backports.entry_points_selectable import entry_points
 
+if sys.version_info.major >= 3 and sys.version_info.minor < 11:
+    from dateutil.parser import parse
+
+
 from ghapi.all import GhApi, paged
 from jinja2 import Environment
 
@@ -102,7 +106,10 @@ def get_releases_as_markdown(organisation_or_user: str, repository: str, token: 
     for release in releases:
         # Convert the published_at to datetime object
         if not isinstance(release.published_at, datetime):
-            release.published_at = datetime.fromisoformat(release.published_at)
+            if sys.version_info.major >= 3 and sys.version_info.minor < 11:
+                release.published_at = parse(release.published_at)
+            else:
+                release.published_at = datetime.fromisoformat(release.published_at)
         if autoprocess is None or autoprocess:
             autoprocess_github_links(release)
         if (match and re.match(match, release.name) is not None) or not match:
