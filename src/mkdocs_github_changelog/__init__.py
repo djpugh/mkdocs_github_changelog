@@ -1,4 +1,7 @@
-"""mkdocs_github_changelog.\n\nmkdocs extension to autogenerate changelog from github\n"""
+"""mkdocs_github_changelog.
+
+mkdocs extension to autogenerate changelog from github.
+"""
 
 
 def __get_version() -> str:

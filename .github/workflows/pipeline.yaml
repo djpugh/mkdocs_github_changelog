@@ -1,0 +1,491 @@
+
+name: Pipeline
+on:
+  push:
+    branches-ignore:
+      - gh-pages
+    tags-ignore:
+      - docs-*
+  pull_request:
+  release:
+    types: [published]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+env:
+  ON_CI: 1
+
+jobs:
+  concurrency:
+    name: Show Concurrency Group
+    runs-on: ubuntu-latest
+    steps:
+      - name: Concurrency Group
+        run: |
+          echo "$CONCURRENCY_GROUP"
+        env:
+          CONCURRENCY_GROUP: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+
+  changes:
+    name: Get Changed Files
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+    - name: Get changed files in the src folder
+      id: src-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: src/**
+    - name: List src changes
+      if: steps.src-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more files in the src folder has changed."
+        echo "List all the files that have changed: ${{ steps.src-changed.outputs.all_changed_files }}"
+    - name: Get changed files in the tests folder
+      id: tests-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: tests/**
+    - name: List tests changes
+      if: steps.tests-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more files in the tests folder has changed."
+        echo "List all the files that have changed: ${{ steps.tests-changed.outputs.all_changed_files }}"
+
+    - name: Get changed files in the root folder
+      id: root-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: |
+            *.{toml,ini}
+            tools/**
+    - name: List root changes
+      if: steps.root-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more config files in the root folder has changed."
+        echo "List all the files that have changed: ${{ steps.root-changed.outputs.all_changed_files }}"
+
+    - name: Get changed files in the docs folder
+      id: docs-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: docs/**
+    - name: List docs changes
+      if: steps.docs-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more files in the docs folder has changed."
+        echo "List all the files that have changed: ${{ steps.docs-changed.outputs.all_changed_files }}"
+
+    - name: Get changed files in the workflows folder
+      id: workflows-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: .github/workflows/**
+    - name: List workflows changes
+      if: steps.workflows-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more files in the .github/workflows folder has changed."
+        echo "List all the files that have changed: ${{ steps.workflows-changed.outputs.all_changed_files }}"
+
+    - name: Get changed files in the .github folder
+      id: tools-changed
+      uses: tj-actions/changed-files@v40
+      with:
+        files: .github/*.{json,properties}
+    - name: List tools changes
+      if: steps.tools-changed.outputs.any_changed == 'true'
+      run: |
+        echo "One or more tool configurations in the .github folder has changed."
+        echo "List all the files that have changed: ${{ steps.tools-changed.outputs.all_changed_files }}"
+
+    outputs:
+      src: ${{ steps.src-changed.outputs.any_changed == 'true'}}
+      tests: ${{ steps.tests-changed.outputs.any_changed  == 'true'}}
+      root: ${{ steps.root-changed.outputs.any_changed  == 'true'}}
+      tools: ${{ steps.tools-changed.outputs.any_changed  == 'true'}}
+      workflows: ${{ steps.workflows-changed.outputs.any_changed  == 'true'}}
+
+  lint:
+    name: Lint (${{ github.event_name }})
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.tools || needs.changes.outputs.root) ||
+      (github.event_name == 'pull_request' ) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nox
+      - name: Lint
+        run: nox -t lint
+
+  test:
+    name: Test Python ${{ matrix.py }} - ${{ matrix.os }} (${{ github.event_name }})
+    runs-on: ${{ matrix.os }}-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.tests || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' ) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "ubuntu"
+          - "windows"
+          - "macos"
+        py:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.py }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.py }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U nox "tomli;python_version<'3.11'"
+    - name: Run Test Suite
+      run: nox -t test -- unit functional
+      env:
+        GITHUB_TOKEN: ${{ github.token}}
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./reports/
+        flags: tests
+        name: ${{ matrix.py }} - ${{ matrix.os }}
+    - name: Configure testspace
+      uses: testspace-com/setup-testspace@v1
+      with:
+        domain: ${{ github.repository_owner }}
+      if: always()
+    - name: Push result to Testspace server
+      run: |
+        testspace reports/*-test.xml
+      if: always()
+
+  sonarcloud:
+    name: SonarCloud (${{ github.event_name }})
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' ) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=djpugh_mkdocs_github_changelog
+            -Dsonar.organization=djpugh
+            -Dsonar.coverage.exclusions=**/*.*
+          # No coverage as handled separately
+
+  license-scan:
+    name: Scan Licenses (${{ github.event_name }})
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.root || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: compile requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools pipenv
+          pip-compile -o requirements.txt
+          cat requirements.txt
+
+      - name: Run FOSSA scan and upload build data
+        uses: fossa-contrib/fossa-action@v3
+        with:
+          fossa-api-key: ${{ secrets.FOSSA_API_KEY }}
+          github-token: ${{ github.token }}
+
+  codeql-analyze:
+    name: CodeQL Analyze (${{ github.event_name }})
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' ) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: python
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  build:
+    name: Build Package (${{ github.event_name }})
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nox
+
+      - name: Build mkdocs_github_changelog
+        run: nox -t build
+
+      - name: Store build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            dist/*
+
+  docs:
+    name: Build docs (${{ github.event_name }})
+    needs:
+      - changes
+    if: >
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.docs || needs.changes.outputs.workflows) ||
+      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nox
+
+
+      - name: Configure Git
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+      - name: Build docs
+        id: build_docs
+        run: nox -t docs
+
+      - name: Select Branch
+        run: git checkout ${{ steps.build_docs.outputs.branch_name}}
+
+      - name: Store Docs Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: |
+            .
+
+  test-build:
+    name: Test Build Python ${{ matrix.py }} - ${{ matrix.os }} (${{ github.event_name }})
+    needs:
+      - build
+      - test
+    if: >
+      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
+      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
+      (github.event_name == 'release')
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "ubuntu"
+          - "windows"
+          - "macos"
+        py:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ./repo
+      - name: Set up Python ${{ matrix.py }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+      - shell: bash
+        run: |
+          pip install $(ls -t dist/*.whl | head -n1)
+      - shell: bash
+        name: Install tomli
+        run: |
+          pip install tomli
+      - shell: python
+        name: Install test dependencies
+        run: |
+          import subprocess, tomli
+          subprocess.check_call(['pip', 'install']+tomli.load(open('./repo/pyproject.toml', 'rb'))['project']['optional-dependencies']['dev-test'])
+      - shell: bash
+        run: pytest ./repo/tests/unit
+      - shell: bash
+        run: pytest ./repo/tests/functional
+        env:
+          GITHUB_TOKEN: ${{ github.token}}
+
+  publish-package:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
+      - build
+      - sonarcloud
+      - license-scan
+      - codeql-analyze
+      - test-build
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && !contains(github.ref, 'dev-')) ||
+      github.event_name == 'release'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mkdocs_github_changelog
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+
+  publish-docs:
+    name: Publish Docs
+    runs-on: ubuntu-latest
+    needs:
+      - docs
+      - publish-package
+    # Only do this on the tagged build, not the release
+    if: >
+      (github.event_name == 'push' &&
+        startsWith(github.ref, 'refs/tags')  && !(contains(github.ref, 'gh-pages') || contains(github.ref, 'docs') || contains(github.ref, 'dev-'))
+      )
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Get Version
+        id: get_version
+        # Cut is not zero indexed
+        # > cut: fields are numbered from 1
+        # > Try 'cut --help' for more information.
+        run: |
+          tag_name=$(echo ${{github.ref}} | cut -d/ -f2)
+          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
+          major=$(echo $tag_name | cut -d. -f1)
+          echo "major=$major" >> $GITHUB_OUTPUT
+          minor=$(echo $tag_name | cut -d. -f2)
+          echo "minor=$minor" >> $GITHUB_OUTPUT
+          patch=$(echo $tag_name | cut -d. -f3)
+          echo "patch=$patch" >> $GITHUB_OUTPUT
+      - name: Check Tag doesn't exist
+        id: check_tag
+        run: |
+          if git show-ref --tags docs-${{ steps.get_version.outputs.tag_name }} --quiet; then
+            echo "::set-output name=tag_exists::true"
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Deploy
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          mike deploy -u "${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor}}" latest --config-file docs/mkdocs.yml -p
+          mike set-default latest --config-file docs/mkdocs.yml
+          git checkout gh-pages
+          git pull origin
+          git tag docs-${{ steps.get_version.outputs.tag_name }}
+          git push origin docs-${{ steps.get_version.outputs.tag_name }}

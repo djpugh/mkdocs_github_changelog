@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from platform import platform, python_version
+import sys
 
 if sys.version_info.major <=3 and sys.version_info.minor < 11:
     import tomli as tomllib  # pyright: ignore [reportMissingImports]
@@ -71,8 +72,8 @@ def test(session):
     else:
         test_folder = ['tests']
     session.install('.[dev,dev-test]')
-    args = []
     for folder in test_folder:
+        args = []
         args.append('-rs')
         args.append(folder)
         print(f'Test session: {folder}')

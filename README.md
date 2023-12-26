@@ -25,9 +25,10 @@ Tests can be added to the tests folder
 ### CI
 
 There are a set of CI checks:
-    * lint: ``nox -t lint``
-    * test: ``nox -t test``
-    * build: ``nox -t build``
+
+* lint: ``nox -t lint``
+* test: ``nox -t test``
+* build: ``nox -t build``
 
 specific subfolders can be passed to the test tag in nox: ``nox -t test -- <subfolder1> <subfolder2>``
 
