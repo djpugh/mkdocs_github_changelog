@@ -387,7 +387,15 @@ jobs:
       - shell: bash
         run: |
           pip install $(ls -t dist/*.whl | head -n1)
-          pip install -U pytest setuptools
+      - shell: bash
+        name: Install tomli
+        run: |
+          pip install tomli
+      - shell: python
+        name: Install test dependencies
+        run: |
+          import subprocess, tomli
+          subprocess.check_call(['pip', 'install']+tomli.load(open('./repo/pyproject.toml', 'rb'))['project']['optional-dependencies']['dev-test'])
       - shell: bash
         run: pytest ./repo/tests/unit
       - shell: bash
@@ -425,7 +433,7 @@ jobs:
         with:
           name: build
           path: dist
-      - name: Publish package distributions to TestPyPI
+      - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
 
@@ -450,14 +458,17 @@ jobs:
           python-version: "3.12"
       - name: Get Version
         id: get_version
+        # Cut is not zero indexed
+        # > cut: fields are numbered from 1
+        # > Try 'cut --help' for more information.
         run: |
-          tag_name=$(echo ${{github.ref}} | cut -d/ -f3)
+          tag_name=$(echo ${{github.ref}} | cut -d/ -f2)
           echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
-          major=$(echo $tag_name | cut -d. -f0)
+          major=$(echo $tag_name | cut -d. -f1)
           echo "major=$major" >> $GITHUB_OUTPUT
-          minor=$(echo $tag_name | cut -d. -f1)
+          minor=$(echo $tag_name | cut -d. -f2)
           echo "minor=$minor" >> $GITHUB_OUTPUT
-          patch=$(echo $tag_name | cut -d. -f2)
+          patch=$(echo $tag_name | cut -d. -f3)
           echo "patch=$patch" >> $GITHUB_OUTPUT
       - name: Check Tag doesn't exist
         id: check_tag
@@ -472,9 +483,9 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          mike set-default latest --config-file docs/mkdocs.yml
           mike deploy -u "${{ steps.get_version.outputs.major }}.${{ steps.get_version.outputs.minor}}" latest --config-file docs/mkdocs.yml -p
+          mike set-default latest --config-file docs/mkdocs.yml
           git checkout gh-pages
           git pull origin
           git tag docs-${{ steps.get_version.outputs.tag_name }}
-          git push origin
+          git push origin docs-${{ steps.get_version.outputs.tag_name }}
