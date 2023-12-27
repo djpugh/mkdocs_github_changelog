@@ -6,7 +6,6 @@ from markdown.blockparser import BlockParser
 from nskit.common.contextmanagers import Env
 
 from mkdocs_github_changelog import extension
-
 from mkdocs_github_changelog.extension import GithubReleaseChangelogProcessor
 
 
@@ -17,7 +16,8 @@ class ProccesorTestCase(unittest.TestCase):
         test_map = {
             '::github-release-changelog abc/def':  {'heading': '', 'org': 'abc', 'repo': 'def'},
             '## ::github-release-changelog abc-0123/def.xyz': {'heading': '## ', 'org': 'abc-0123', 'repo': 'def.xyz'},
-            '### ::github-release-changelog abc-0123/def.xyz_123': {'heading': '### ', 'org': 'abc-0123', 'repo': 'def.xyz_123'}
+            '### ::github-release-changelog abc-0123/def.xyz_123': {'heading': '### ', 'org': 'abc-0123', 'repo': 'def.xyz_123'},
+            '## ::github-release-changelog djpugh/mkdocs_licenseinfo': {'heading': '## ', 'org': 'djpugh', 'repo': 'mkdocs_licenseinfo'}
         }
         for test_string, expected in test_map.items():
             with self.subTest(test=test_string):
