@@ -19,6 +19,8 @@ if sys.version_info.major >= 3 and sys.version_info.minor < 11:
 from ghapi.all import GhApi, paged
 from jinja2 import Environment
 
+from mkdocs_github_changelog import logger
+
 RELEASE_TEMPLATE = "# [{{release.name}}]({{release.html_url}})\n*Released at {{release.published_at.isoformat()}}*\n\n{{release.body}}"
 
 
@@ -121,12 +123,15 @@ def get_releases_as_markdown(
     """Get the releases from github as a list of rendered markdown strings."""
     if github_api_url is not None:
         github_api_url = github_api_url.rstrip('/')
+    logger.info('Getting releases from github')
     api = GhApi(token=token, gh_host=github_api_url)
     releases = []
     for page in paged(api.repos.list_releases, organisation_or_user, repository, per_page=100):
         releases += page
+    logger.info(f'Processing releases from github, {len(releases)} found')
     jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
     selected_releases = _process_releases(releases, match=match, autoprocess=autoprocess)
     if release_template is None:
         release_template = RELEASE_TEMPLATE
+    logger.info(f'Rendering releases from github, {len(releases)} selected')
     return [jinja_environment.from_string(release_template).render(release=release) for release in selected_releases]

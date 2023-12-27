@@ -9,7 +9,6 @@ from jinja2 import Environment
 from nskit.common.contextmanagers import Env, TestExtension
 
 from mkdocs_github_changelog import get_releases
-
 from mkdocs_github_changelog.get_releases import (
     _EnvironmentFactory,
     autoprocess_github_links,
