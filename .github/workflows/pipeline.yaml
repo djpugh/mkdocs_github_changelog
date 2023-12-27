@@ -211,6 +211,7 @@ jobs:
             -Dsonar.projectKey=djpugh_mkdocs_github_changelog
             -Dsonar.organization=djpugh
             -Dsonar.coverage.exclusions=**/*.*
+            -Dsonar.sources=src
           # No coverage as handled separately
 
   license-scan:

@@ -81,7 +81,6 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
             # insert it back into the blocks to be processed as markdown
             block = self._process_block(match.groupdict()['org'], match.groupdict()['repo'], block, heading_level)
             blocks.insert(0, block)
-        return False
 
     def _process_block(
         self,

@@ -74,8 +74,8 @@ def autoprocess_github_links(release):
         base_url = release.html_url.split('releases')[0]
         # We also want to parse this to get the
         root_url = '/'.join(base_url.split('/')[:-3])
-        user_re = '@[a-zA-Z0-9-]+'
-        issue_re = '#[0-9]+'
+        user_re = r'@[a-zA-Z\d-]+'
+        issue_re = r'#[\d]+'
 
         def github_user_link(match_obj):
             user_name = match_obj.string[match_obj.start(): match_obj.end()]
@@ -93,15 +93,7 @@ def autoprocess_github_links(release):
     return release
 
 
-def get_releases_as_markdown(organisation_or_user: str, repository: str, token: str | None = None, release_template: str | None = RELEASE_TEMPLATE, github_api_url: str | None = None, match: str | None = None, autoprocess: bool | None = True):
-    """Get the releases from github as a list of rendered markdown strings."""
-    if github_api_url is not None:
-        github_api_url = github_api_url.rstrip('/')
-    api = GhApi(token=token, gh_host=github_api_url)
-    releases = []
-    for page in paged(api.repos.list_releases, organisation_or_user, repository, per_page=100):
-        releases += page
-    jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
+def _process_releases(releases, match: str | None = None, autoprocess: bool = True):
     selected_releases = []
     for release in releases:
         # Convert the published_at to datetime object
@@ -114,6 +106,27 @@ def get_releases_as_markdown(organisation_or_user: str, repository: str, token: 
             autoprocess_github_links(release)
         if (match and re.match(match, release.name) is not None) or not match:
             selected_releases.append(release)
+    return selected_releases
+
+
+def get_releases_as_markdown(
+    organisation_or_user: str,
+    repository: str,
+    token: str | None = None,
+    release_template: str | None = RELEASE_TEMPLATE,
+    github_api_url: str | None = None,
+    match: str | None = None,
+    autoprocess: bool | None = True
+):
+    """Get the releases from github as a list of rendered markdown strings."""
+    if github_api_url is not None:
+        github_api_url = github_api_url.rstrip('/')
+    api = GhApi(token=token, gh_host=github_api_url)
+    releases = []
+    for page in paged(api.repos.list_releases, organisation_or_user, repository, per_page=100):
+        releases += page
+    jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
+    selected_releases = _process_releases(releases, match=match, autoprocess=autoprocess)
     if release_template is None:
         release_template = RELEASE_TEMPLATE
     return [jinja_environment.from_string(release_template).render(release=release) for release in selected_releases]
