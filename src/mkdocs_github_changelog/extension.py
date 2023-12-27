@@ -32,6 +32,7 @@ from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 from mkdocs.utils.yaml import get_yaml_loader, yaml_load
 
+from mkdocs_github_changelog import logger
 from mkdocs_github_changelog.get_releases import get_releases_as_markdown
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ if TYPE_CHECKING:
 class GithubReleaseChangelogProcessor(BlockProcessor):
     """Changelog Markdown block processor."""
 
-    regex = re.compile(r"^(?P<heading>#{1,6} *|)::github-release-changelog ?(?P<org>[a-zA-Z0-9-]+?)\/(?P<repo>.+?) *$", flags=re.MULTILINE)
+    regex = re.compile(r"^(?P<heading>#{1,6} *|)::github-release-changelog ?(?P<org>[a-zA-Z\d-]+?)\/(?P<repo>.+?) *$", flags=re.MULTILINE)
 
     def __init__(
         self,
@@ -55,14 +56,21 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
 
     def test(self, parent: Element, block: str) -> bool:  # noqa: U100
         """Match the extension instructions."""
-        return bool(self.regex.search(block))
+        logger.debug(f'Checking {block}')
+        result = bool(self.regex.search(block))
+        if '::github-release-changelog' in block and not result:
+            logger.warn(f"Block: {block} might be expected to match, but didn't")
+        return result
 
     def run(self, parent: Element, blocks: MutableSequence[str]) -> None:
         """Run code on the matched blocks to get the markdown."""
         block = blocks.pop(0)
         match = self.regex.search(block)
+        logger.debug(f'Processing {block}')
 
         if match:
+            logger.debug(f'Matched {block}')
+
             if match.start() > 0:
                 self.parser.parseBlocks(parent, [block[: match.start()]])
             # removes the first line
@@ -77,9 +85,11 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
 
         if match:
             heading_level = match["heading"].count("#")
+            logger.debug(f'Heading level: {heading_level}')
             # We are going to process the markdown from the releases and then
             # insert it back into the blocks to be processed as markdown
             block = self._process_block(match.groupdict()['org'], match.groupdict()['repo'], block, heading_level)
+            logger.debug('Block processed and releases generated')
             blocks.insert(0, block)
 
     def _process_block(
@@ -99,6 +109,8 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
         release_template = config.get('release_template', self._config.get('release_template', None))
         match = config.get('match', self._config.get('match', None))
         autoprocess = config.get('autoprocess', self._config.get('autoprocess', True))
+        logger.info('Getting releases for {org}/{repo}')
+        logger.debug('Config:: \nrelease_template: {release_template}\ngithub_api_url: {github_api_url}\nmatch: {match}\nautoprocess: {autoprocess}')
         block = '\n\n'.join(get_releases_as_markdown(
             organisation_or_user=org,
             repository=repo,
