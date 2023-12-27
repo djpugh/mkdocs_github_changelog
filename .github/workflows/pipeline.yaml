@@ -479,6 +479,15 @@ jobs:
           else
             echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
+      - shell: bash
+        name: Install tomli
+        run: |
+          pip install tomli
+      - shell: python
+        name: Install test dependencies
+        run: |
+          import subprocess, tomli
+          subprocess.check_call(['pip', 'install']+tomli.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['dev-docs'])
       - name: Deploy
         run: |
           git config user.name github-actions
