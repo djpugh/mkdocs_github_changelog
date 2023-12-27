@@ -7,7 +7,8 @@ mkdocs extension to autogenerate changelog from github.
 def __get_version() -> str:
     """Get version information or return default if unable to do so."""
     # Default
-    version = '0+unknown'
+    default_version = '0+unknown'
+    version = default_version
     # Development installation only
     try:
         # Look here for setuptools scm to update the version - for development environments only
@@ -20,13 +21,13 @@ def __get_version() -> str:
         pass
     # Development installation without setuptools_scm or installed package
     # try loading from file
-    if version == '0+unknown':
+    if version == default_version:
         try:
             from mkdocs_github_changelog._version import __version__  # noqa: F401
         except ImportError:
             pass
     # Development installation without setuptools_scm
-    if version == '0+unknown':
+    if version == default_version:
         # Use the metadata
         import sys
         if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
