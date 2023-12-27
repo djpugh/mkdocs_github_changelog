@@ -4,7 +4,7 @@ mkdocs extension to autogenerate changelogs from github releases.
 An ``mkdocs`` equivalent     to [sphinx_github_changelog](https://github.com/ewjoachim/sphinx-github-changelog).
 
 ## Why?
-Easy releasing is key for rapid and robust software development. We use tag based releases, but want an easy way to generate the changelog automatically, enter [release drafter](https://github.com/release-drafter/release-drafter) and GitHub Releases.
+Easy releasing is key for rapid and robust software development. We use tag based releases, but want an easy way to generate the changelog automatically, on the Github side, we use [release drafter](https://github.com/release-drafter/release-drafter) and GitHub Releases.
 
 [Release drafter](https://github.com/release-drafter/release-drafter) allows you to generate draft releases from your pull requests, and then use the release to generate the tag automatically, and include the release changelog in the release body. Assuming you've got good pull release hygiene, you can cut a new release by editing the draft GitHub Release and then pressing "Publish Release".
 
