@@ -8,7 +8,7 @@ name = "mkdocs_github_changelog"
 authors = [{name = "David J Pugh", email="djpugh@gmail.com"}]
 maintainers = [{ name = "David J Pugh", email="djpugh@gmail.com" }]
 description = "mkdocs extension to autogenerate changelog from github"
-readme = {file="README.md", content-type = "text/x-rst"}
+readme = {file="README.md", content-type = "text/markdown"}
 keywords = ["mkdocs", "mkdocs-plugin", "github", "changelog", "documentation"]
 requires-python = '>3.7'
 classifiers = [
