@@ -2,6 +2,8 @@
 
 mkdocs extension to autogenerate changelog from github.
 """
+import logging
+from typing import Any, MutableMapping
 
 
 def __get_version() -> str:
@@ -45,3 +47,32 @@ def __get_version() -> str:
 
 
 __version__ = __get_version()
+
+
+class _PluginLogger(logging.LoggerAdapter):
+    """A logger adapter to prefix messages with the originating package name."""
+
+    def __init__(self, prefix: str, logger: logging.Logger):
+        """Initialize the object.
+
+        Arguments:
+            prefix: The string to insert in front of every message.
+            logger: The logger instance.
+        """
+        super().__init__(logger, {})
+        self.prefix = prefix
+
+    def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, Any]:
+        """Process the message.
+
+        Arguments:
+            msg: The message:
+            kwargs: Remaining arguments.
+
+        Returns:
+            The processed message.
+        """
+        return f"{self.prefix}: {msg}", kwargs
+
+
+logger = _PluginLogger('mkdocs_github_changelog', logging.getLogger("mkdocs.plugins.mkdocs_github_changelog"))
