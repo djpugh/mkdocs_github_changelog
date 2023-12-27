@@ -28,7 +28,7 @@ plugins:
         release_template: <jinja2 str>
         # Jinja2 template string to override the default.
         match: '[0-9+].[0-9+].[0-9]+'
-        # Regex string for matching the rleease name.
+        # Regex string for matching the release name.
         autoprocess: True
         # Autoprocess the body for user and issue/pull request links
         enabled: True
