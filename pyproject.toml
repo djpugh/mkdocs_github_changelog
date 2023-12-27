@@ -84,6 +84,7 @@ dev-docs = [
     "mkdocs-git-authors-plugin",
     "mkdocs-coverage",
     "mkdocs-include-markdown-plugin",
+    "mkdocs-licenseinfo",
     "mike"
 ]
 dev-build = [
