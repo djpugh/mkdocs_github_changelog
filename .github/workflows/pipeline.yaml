@@ -36,7 +36,7 @@ jobs:
         fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
     - name: Get changed files in the src folder
       id: src-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: src/**
     - name: List src changes
@@ -46,7 +46,7 @@ jobs:
         echo "List all the files that have changed: ${{ steps.src-changed.outputs.all_changed_files }}"
     - name: Get changed files in the tests folder
       id: tests-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: tests/**
     - name: List tests changes
@@ -57,7 +57,7 @@ jobs:
 
     - name: Get changed files in the root folder
       id: root-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: |
             *.{toml,ini}
@@ -70,7 +70,7 @@ jobs:
 
     - name: Get changed files in the docs folder
       id: docs-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: docs/**
     - name: List docs changes
@@ -81,7 +81,7 @@ jobs:
 
     - name: Get changed files in the workflows folder
       id: workflows-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: .github/workflows/**
     - name: List workflows changes
@@ -92,7 +92,7 @@ jobs:
 
     - name: Get changed files in the .github folder
       id: tools-changed
-      uses: tj-actions/changed-files@v40
+      uses: tj-actions/changed-files@v41
       with:
         files: .github/*.{json,properties}
     - name: List tools changes
