@@ -95,9 +95,14 @@ def autoprocess_github_links(release):
     return release
 
 
-def _process_releases(releases, match: str | None = None, autoprocess: bool = True):
+def _process_releases(releases, match: str | None = None, autoprocess: bool = True, include_prerelease: bool = False):
     selected_releases = []
     for release in releases:
+        # Ignore draft releases:
+        if release.draft:
+            continue
+        if release.prelease and not include_prerelease:
+            continue
         # Convert the published_at to datetime object
         if not isinstance(release.published_at, datetime):
             if sys.version_info.major >= 3 and sys.version_info.minor < 11:
@@ -118,7 +123,8 @@ def get_releases_as_markdown(
     release_template: str | None = RELEASE_TEMPLATE,
     github_api_url: str | None = None,
     match: str | None = None,
-    autoprocess: bool | None = True
+    autoprocess: bool | None = True,
+    include_prerelease: bool | None = False
 ):
     """Get the releases from github as a list of rendered markdown strings."""
     if github_api_url is not None:
@@ -130,7 +136,7 @@ def get_releases_as_markdown(
         releases += page
     logger.info(f'Processing releases from github, {len(releases)} found')
     jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
-    selected_releases = _process_releases(releases, match=match, autoprocess=autoprocess)
+    selected_releases = _process_releases(releases, match=match, autoprocess=autoprocess, include_prerelease=include_prerelease)
     if release_template is None:
         release_template = RELEASE_TEMPLATE
     logger.info(f'Rendering releases from github, {len(releases)} selected')
