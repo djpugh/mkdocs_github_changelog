@@ -3,7 +3,6 @@ from functools import wraps
 from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
-import webbrowser
 
 from click.testing import CliRunner
 from fastcore.net import HTTP403ForbiddenError, HTTP404NotFoundError
@@ -121,9 +120,7 @@ plugins:
             resp = runner.invoke(build_command, catch_exceptions=False)
             self.assertEqual(resp.exit_code, 0, resp.exc_info)
             self.assertTrue(Path('html').exists())
-            # webbrowser.open(str(Path('html', 'index.html').absolute()))
             index_html = Path('html', 'index.html')
-            webbrowser.open(str(index_html.absolute()))
             contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="020"><a href="https://www.google.com">0.2.0</a></h3>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
             self.assertIn('<h4 id="020_1"><a href="https://www.google.com">0.2.0</a></h4>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
@@ -205,7 +202,6 @@ plugins:
             self.assertTrue(Path('html').exists())
 
             index_html = Path('html', 'index.html')
-            webbrowser.open(str(index_html.absolute()))
             contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="release-0122"><a href="https://github.com/djpugh/fastapi_aad_auth/releases/tag/0.1.22">Release 0.1.22</a></h3>', contents)
             self.assertIn('<p><em>Released at 2022-04-17T14:22:48+00:00</em>', contents)
