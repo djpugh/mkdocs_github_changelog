@@ -52,7 +52,8 @@ class ProccesorTestCase(unittest.TestCase):
             release_template=None,
             github_api_url=None,
             match=None,
-            autoprocess=True
+            autoprocess=True,
+            include_prereleases=False
         )
 
     # Patch get_releases_as_markdown to return the release info
@@ -70,7 +71,8 @@ class ProccesorTestCase(unittest.TestCase):
             release_template='xyz',
             github_api_url=None,
             match='*.*.*',
-            autoprocess=False
+            autoprocess=False,
+            include_prereleases=False
         )
 
     # Patch get_releases_as_markdown to return the release info
@@ -87,7 +89,8 @@ class ProccesorTestCase(unittest.TestCase):
             release_template='ghi',
             github_api_url='https://microsoft.com',
             match='a.b.c',
-            autoprocess=False
+            autoprocess=False,
+            include_prereleases=False
         )
         self.assertEqual(result, '#### 0.1.0\n\n##### Features\n Hello World ([#1](https://www.google.com))')
 
@@ -106,7 +109,8 @@ class ProccesorTestCase(unittest.TestCase):
                 release_template='ghi',
                 github_api_url='https://microsoft.com',
                 match='a.b.c',
-                autoprocess=True
+                autoprocess=True,
+                include_prereleases=False
             )
             self.assertEqual(result, '#### 0.1.0\n\n##### Features\n Hello World ([#1](https://www.google.com))')
 
@@ -125,7 +129,8 @@ class ProccesorTestCase(unittest.TestCase):
             release_template=None,
             github_api_url=None,
             match=None,
-            autoprocess=True
+            autoprocess=True,
+            include_prereleases=False
         )
         self.assertEqual(result, '#### 0.1.0\n\n##### Features\n Hello World ([#1](https://www.google.com))')
 

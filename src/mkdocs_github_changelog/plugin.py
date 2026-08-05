@@ -30,6 +30,8 @@ class PluginConfig(Config):
     """Regex string for matching the rleease name."""
     autoprocess = opt.Type(bool, default=True)
     """Autoprocess the release bodies for issue and username links."""
+    include_prereleases = opt.Type(bool, default=False)
+    """Include prereleases in the changelog."""
     enabled = opt.Type(bool, default=True)
     """Enable or disable the plugin."""
 

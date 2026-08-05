@@ -3,7 +3,6 @@ from functools import wraps
 from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
-import webbrowser
 
 from click.testing import CliRunner
 from fastcore.net import HTTP403ForbiddenError, HTTP404NotFoundError
@@ -27,17 +26,24 @@ def mock_gh_api(func):
     @patch.object(get_releases, 'paged', autospec=True)
     @wraps(func)
     def mocked_call(self, paged, GhApi):
+        # draft and prerelease must be set explicitly: an unset MagicMock
+        # attribute is truthy, so leaving them off makes every release look like
+        # a draft prerelease and it gets filtered out of the changelog.
         release1_content = MagicMock()
         release1_content.body = RELEASE_1
         release1_content.name = '0.2.0'
         release1_content.html_url = 'https://www.google.com'
         release1_content.published_at = datetime(2023, 12, 1, 13, 46).astimezone().isoformat()
+        release1_content.draft = False
+        release1_content.prerelease = False
 
         release2_content = MagicMock()
         release2_content.body = RELEASE_2
         release2_content.name = '0.1.0'
         release2_content.html_url = 'https://www.google.com'
         release2_content.published_at = datetime(2023, 11, 1, 13, 46).astimezone().isoformat()
+        release2_content.draft = False
+        release2_content.prerelease = False
 
         def paged_mock(func, organisation_or_user, repository, *args, **kwargs):
             print('Mocked', organisation_or_user, repository)
@@ -114,9 +120,7 @@ plugins:
             resp = runner.invoke(build_command, catch_exceptions=False)
             self.assertEqual(resp.exit_code, 0, resp.exc_info)
             self.assertTrue(Path('html').exists())
-            # webbrowser.open(str(Path('html', 'index.html').absolute()))
             index_html = Path('html', 'index.html')
-            webbrowser.open(str(index_html.absolute()))
             contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="020"><a href="https://www.google.com">0.2.0</a></h3>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
             self.assertIn('<h4 id="020_1"><a href="https://www.google.com">0.2.0</a></h4>\n<p><em>Released at 2023-12-01T13:46:00+00:00</em>', contents)
@@ -198,7 +202,6 @@ plugins:
             self.assertTrue(Path('html').exists())
 
             index_html = Path('html', 'index.html')
-            webbrowser.open(str(index_html.absolute()))
             contents = index_html.read_text(encoding="utf8")
             self.assertIn('<h3 id="release-0122"><a href="https://github.com/djpugh/fastapi_aad_auth/releases/tag/0.1.22">Release 0.1.22</a></h3>', contents)
             self.assertIn('<p><em>Released at 2022-04-17T14:22:48+00:00</em>', contents)

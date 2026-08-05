@@ -40,10 +40,15 @@ def lint(session):
 
 @nox.session(reuse_venv=True, tags=['lint'])
 def security(session):
-    install_dependencies(session, required=False, optional=['dev', 'dev-security'])
+    # Dependencies are installed (required=True) so that the audit below sees the
+    # runtime requirements and not just the tooling.
+    install_dependencies(session, required=True, optional=['dev', 'dev-security'])
     Path('reports').mkdir(exist_ok=True)
-    session.run('pipenv', 'lock')
-    session.run('pipenv', 'check')
+    # Replaces `pipenv lock` + `pipenv check`: current pipenv delegates checking to
+    # safety, which prompts to install itself and then wants an API key, so on CI it
+    # dies with `EOFError: EOF when reading a line`. pip-audit needs neither, and
+    # audits the session environment directly rather than via a generated lockfile.
+    session.run('pip-audit', '--progress-spinner', 'off')
     session.run('bandit', '-r', 'src')
     session.run('bandit', '-r', 'src', '--format', 'xml', '--output', 'reports/security-results.xml')
 
