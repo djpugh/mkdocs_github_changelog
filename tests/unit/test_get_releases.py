@@ -29,16 +29,18 @@ def mock_gh_api(func):
     @patch.object(get_releases, 'paged', autospec=True)
     @wraps(func)
     def mocked_call(self, paged, GhApi):
-        # NB: ``draft`` must be set explicitly. A bare MagicMock returns a
-        # truthy mock for any attribute, so an unset ``draft`` would make every
-        # fixture release look like an unpublished draft. The real API always
-        # includes the field.
+        # NB: every flag the filters read must be set explicitly. A bare
+        # MagicMock returns a truthy mock for any attribute, so an unset
+        # ``draft`` or ``prerelease`` would make every fixture release look
+        # unpublished or pre-release and silently empty the result. The real API
+        # always includes both fields.
         release1_content = MagicMock()
         release1_content.body = RELEASE_1
         release1_content.name = '0.2.0'
         release1_content.html_url = 'https://www.google.com/releases/0.2.0'
         release1_content.published_at = datetime(2023, 12, 1, 13, 46).astimezone().isoformat()
         release1_content.draft = False
+        release1_content.prerelease = False
         release1_content.processed = False
 
         release2_content = MagicMock()
@@ -47,6 +49,7 @@ def mock_gh_api(func):
         release2_content.html_url = 'https://www.google.com/releases/0.2.0'
         release2_content.published_at = datetime(2023, 11, 1, 13, 46).astimezone().isoformat()
         release2_content.draft = False
+        release2_content.prerelease = False
         release2_content.processed = False
 
         def paged_mock(func, organisation_or_user, repository, *args, **kwargs):
@@ -143,13 +146,14 @@ class DraftAndMissingDateTestCase(unittest.TestCase):
     """Releases without a usable published_at must not break the build."""
 
     @staticmethod
-    def _release(name, published_at, draft=False):
+    def _release(name, published_at, draft=False, prerelease=False):
         release = MagicMock()
         release.body = RELEASE_1
         release.name = name
         release.html_url = 'https://www.google.com/releases/' + (name or 'draft')
         release.published_at = published_at
         release.draft = draft
+        release.prerelease = prerelease
         release.processed = False
         return release
 
@@ -376,3 +380,74 @@ class EnvironmentFactoryTestCase(unittest.TestCase):
         # Check loader is correct
         environment = _EnvironmentFactory.default_environment()
         self.assertIsInstance(environment, Environment)
+
+
+class PrereleaseTestCase(unittest.TestCase):
+    """Prereleases are excluded unless explicitly asked for."""
+
+    @staticmethod
+    def _release(name, prerelease=False, draft=False):
+        release = MagicMock()
+        release.body = RELEASE_1
+        release.name = name
+        release.html_url = 'https://www.google.com/releases/' + name
+        release.published_at = datetime(2023, 12, 1, 13, 46).astimezone().isoformat()
+        release.draft = draft
+        release.prerelease = prerelease
+        release.processed = False
+        return release
+
+    def test_prerelease_excluded_by_default(self):
+        """A prerelease is left out unless requested."""
+        selected = _process_releases([
+            self._release('1.0.0'),
+            self._release('2.0.0rc1', prerelease=True),
+        ])
+        self.assertEqual([r.name for r in selected], ['1.0.0'])
+
+    def test_prerelease_included_when_requested(self):
+        """include_prereleases=True keeps them, newest first as returned."""
+        selected = _process_releases(
+            [self._release('1.0.0'), self._release('2.0.0rc1', prerelease=True)],
+            include_prereleases=True,
+        )
+        self.assertEqual([r.name for r in selected], ['1.0.0', '2.0.0rc1'])
+
+    def test_stable_releases_are_never_affected(self):
+        """The flag does not change which stable releases are selected."""
+        for include in (True, False):
+            with self.subTest(include_prereleases=include):
+                selected = _process_releases(
+                    [self._release('1.0.0')], include_prereleases=include
+                )
+                self.assertEqual([r.name for r in selected], ['1.0.0'])
+
+    def test_drafts_excluded_even_when_prereleases_included(self):
+        """A draft is unpublished, so it stays out regardless of the flag."""
+        selected = _process_releases(
+            [self._release('1.0.0'), self._release('draft', draft=True)],
+            include_prereleases=True,
+        )
+        self.assertEqual([r.name for r in selected], ['1.0.0'])
+
+    def test_flag_reads_the_prerelease_attribute(self):
+        """The filter must read ``prerelease``, not a misspelling.
+
+        A missing key on ghapi's AttrDict is falsy, so a typo such as
+        ``release.prelease`` would silently never filter anything and the flag
+        would appear to work while doing nothing. Using a mapping here means an
+        incorrect attribute name raises rather than quietly passing.
+        """
+        release = AttrDict({
+            'name': '2.0.0rc1',
+            'body': RELEASE_1,
+            'html_url': 'https://www.google.com/releases/2.0.0rc1',
+            'published_at': datetime(2023, 12, 1, 13, 46).astimezone().isoformat(),
+            'draft': False,
+            'prerelease': True,
+        })
+        self.assertEqual(_process_releases([release]), [])
+        self.assertEqual(
+            [r.name for r in _process_releases([release], include_prereleases=True)],
+            ['2.0.0rc1'],
+        )

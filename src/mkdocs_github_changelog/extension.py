@@ -109,8 +109,9 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
         release_template = config.get('release_template', self._config.get('release_template', None))
         match = config.get('match', self._config.get('match', None))
         autoprocess = config.get('autoprocess', self._config.get('autoprocess', True))
+        include_prereleases = config.get('include_prereleases', self._config.get('include_prereleases', False))
         logger.info('Getting releases for {org}/{repo}')
-        logger.debug('Config:: \nrelease_template: {release_template}\ngithub_api_url: {github_api_url}\nmatch: {match}\nautoprocess: {autoprocess}')
+        logger.debug('Config:: \nrelease_template: {release_template}\ngithub_api_url: {github_api_url}\nmatch: {match}\nautoprocess: {autoprocess}\ninclude_prereleases: {include_prereleases}')
         block = '\n\n'.join(get_releases_as_markdown(
             organisation_or_user=org,
             repository=repo,
@@ -118,7 +119,8 @@ class GithubReleaseChangelogProcessor(BlockProcessor):
             release_template=release_template,
             github_api_url=github_api_url,
             match=match,
-            autoprocess=autoprocess
+            autoprocess=autoprocess,
+            include_prereleases=include_prereleases
             ))
         # We need to decrease/increase the base indent level
         if base_indent > 0:

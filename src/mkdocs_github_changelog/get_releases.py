@@ -141,7 +141,12 @@ def _coerce_published_at(release) -> datetime | None:
     return None
 
 
-def _process_releases(releases, match: str | None = None, autoprocess: bool = True):
+def _process_releases(
+    releases,
+    match: str | None = None,
+    autoprocess: bool = True,
+    include_prereleases: bool = False,
+):
     selected_releases = []
     for release in releases:
         # Drafts are unpublished, so they have no published_at and an empty
@@ -150,6 +155,11 @@ def _process_releases(releases, match: str | None = None, autoprocess: bool = Tr
         # missing timestamp.
         if getattr(release, 'draft', False):
             logger.debug(f'Skipping draft release {release.html_url}')
+            continue
+        # A prerelease is published, so it renders fine, but it is usually noise
+        # in a changelog -- excluded unless asked for.
+        if not include_prereleases and getattr(release, 'prerelease', False):
+            logger.debug(f'Skipping prerelease {release.html_url}')
             continue
         published_at = _coerce_published_at(release)
         if published_at is None:
@@ -172,7 +182,8 @@ def get_releases_as_markdown(
     release_template: str | None = RELEASE_TEMPLATE,
     github_api_url: str | None = None,
     match: str | None = None,
-    autoprocess: bool | None = True
+    autoprocess: bool | None = True,
+    include_prereleases: bool | None = False
 ):
     """Get the releases from github as a list of rendered markdown strings."""
     if github_api_url is not None:
@@ -184,7 +195,12 @@ def get_releases_as_markdown(
         releases += page
     logger.info(f'Processing releases from github, {len(releases)} found')
     jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
-    selected_releases = _process_releases(releases, match=match, autoprocess=autoprocess)
+    selected_releases = _process_releases(
+        releases,
+        match=match,
+        autoprocess=autoprocess,
+        include_prereleases=include_prereleases,
+    )
     if release_template is None:
         release_template = RELEASE_TEMPLATE
     logger.info(f'Rendering releases from github, {len(releases)} selected')

@@ -31,6 +31,8 @@ plugins:
         # Regex string for matching the release name.
         autoprocess: True
         # Autoprocess the body for user and issue/pull request links
+        include_prereleases: False
+        # Include prereleases (draft releases are always excluded)
         enabled: True
         # Enable or disable the plugin.
 ```
@@ -50,6 +52,7 @@ markdown
     github_api_url: <url>
     release_template: <jinja2 str>
     match: '[0-9+].[0-9+].[0-9]+'
+    include_prereleases: false
     autoprocess: true
 ```
 

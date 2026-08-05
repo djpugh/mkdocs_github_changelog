@@ -15,13 +15,13 @@ class MkdocsGithubChangelogPluginTestCase(unittest.TestCase):
     def test_config_defaults(self):
         plugin = MkdocsGithubChangelogPlugin()
         resp = plugin.load_config({})
-        self.assertEqual(plugin.config, {'token': None, 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'enabled': True, 'match': None})
+        self.assertEqual(plugin.config, {'token': None, 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'include_prereleases': False, 'enabled': True, 'match': None})
         self.assertEqual(resp, ([], []))
 
     def test_config_overriden_ok(self):
         plugin = MkdocsGithubChangelogPlugin()
-        resp = plugin.load_config({'token': 'abc', 'github_api_url': 'https://api.github.com', 'release_template': '123', 'autoprocess': False, 'match': 'a.b.c', 'enabled': False})
-        self.assertEqual(plugin.config, {'token': 'abc', 'github_api_url': 'https://api.github.com', 'release_template': '123', 'autoprocess': False, 'match': 'a.b.c', 'enabled': False})
+        resp = plugin.load_config({'token': 'abc', 'github_api_url': 'https://api.github.com', 'release_template': '123', 'autoprocess': False, 'include_prereleases': False, 'match': 'a.b.c', 'enabled': False})
+        self.assertEqual(plugin.config, {'token': 'abc', 'github_api_url': 'https://api.github.com', 'release_template': '123', 'autoprocess': False, 'include_prereleases': False, 'match': 'a.b.c', 'enabled': False})
         self.assertEqual(resp, ([], []))
 
     def test_config_overriden_bad(self):
@@ -48,7 +48,7 @@ class MkdocsGithubChangelogPluginTestCase(unittest.TestCase):
         plugin.on_config(config)
         self.assertIsInstance(config.markdown_extensions[-1], GithubReleaseChangelogExtension)
         ext = config.markdown_extensions[-1]
-        self.assertEqual(ext._config, {'token': None, 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'match': None, 'enabled': True})
+        self.assertEqual(ext._config, {'token': None, 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'include_prereleases': False, 'match': None, 'enabled': True})
 
     def test_on_config_from_env(self):
         with Env(override={'GITHUB_TEST_TOKEN': 'abc'}):
@@ -65,4 +65,4 @@ class MkdocsGithubChangelogPluginTestCase(unittest.TestCase):
                 plugin.on_config(config)
                 self.assertIsInstance(config.markdown_extensions[-1], GithubReleaseChangelogExtension)
                 ext = config.markdown_extensions[-1]
-                self.assertEqual(ext._config, {'token': 'abc', 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'match': None, 'enabled': True})
+                self.assertEqual(ext._config, {'token': 'abc', 'github_api_url': None, 'release_template': None, 'autoprocess': True, 'include_prereleases': False, 'match': None, 'enabled': True})
