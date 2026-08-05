@@ -27,17 +27,24 @@ def mock_gh_api(func):
     @patch.object(get_releases, 'paged', autospec=True)
     @wraps(func)
     def mocked_call(self, paged, GhApi):
+        # draft and prerelease must be set explicitly: an unset MagicMock
+        # attribute is truthy, so leaving them off makes every release look like
+        # a draft prerelease and it gets filtered out of the changelog.
         release1_content = MagicMock()
         release1_content.body = RELEASE_1
         release1_content.name = '0.2.0'
         release1_content.html_url = 'https://www.google.com'
         release1_content.published_at = datetime(2023, 12, 1, 13, 46).astimezone().isoformat()
+        release1_content.draft = False
+        release1_content.prerelease = False
 
         release2_content = MagicMock()
         release2_content.body = RELEASE_2
         release2_content.name = '0.1.0'
         release2_content.html_url = 'https://www.google.com'
         release2_content.published_at = datetime(2023, 11, 1, 13, 46).astimezone().isoformat()
+        release2_content.draft = False
+        release2_content.prerelease = False
 
         def paged_mock(func, organisation_or_user, repository, *args, **kwargs):
             print('Mocked', organisation_or_user, repository)
