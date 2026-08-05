@@ -1,16 +1,20 @@
 from datetime import datetime
 from functools import wraps
+import inspect
 import json
 import unittest
 from unittest.mock import call, DEFAULT, MagicMock, patch
 
+from fastcore.basics import AttrDict
 from fastcore.net import HTTP404NotFoundError
 from jinja2 import Environment
 from nskit.common.contextmanagers import Env, TestExtension
 
 from mkdocs_github_changelog import get_releases
 from mkdocs_github_changelog.get_releases import (
+    _coerce_published_at,
     _EnvironmentFactory,
+    _process_releases,
     autoprocess_github_links,
     get_releases_as_markdown,
     RELEASE_TEMPLATE,
@@ -25,11 +29,16 @@ def mock_gh_api(func):
     @patch.object(get_releases, 'paged', autospec=True)
     @wraps(func)
     def mocked_call(self, paged, GhApi):
+        # NB: ``draft`` must be set explicitly. A bare MagicMock returns a
+        # truthy mock for any attribute, so an unset ``draft`` would make every
+        # fixture release look like an unpublished draft. The real API always
+        # includes the field.
         release1_content = MagicMock()
         release1_content.body = RELEASE_1
         release1_content.name = '0.2.0'
         release1_content.html_url = 'https://www.google.com/releases/0.2.0'
         release1_content.published_at = datetime(2023, 12, 1, 13, 46).astimezone().isoformat()
+        release1_content.draft = False
         release1_content.processed = False
 
         release2_content = MagicMock()
@@ -37,6 +46,7 @@ def mock_gh_api(func):
         release2_content.name = '0.1.0'
         release2_content.html_url = 'https://www.google.com/releases/0.2.0'
         release2_content.published_at = datetime(2023, 11, 1, 13, 46).astimezone().isoformat()
+        release2_content.draft = False
         release2_content.processed = False
 
         def paged_mock(func, organisation_or_user, repository, *args, **kwargs):
@@ -127,6 +137,107 @@ class GetReleasesTestCase(unittest.TestCase):
         self.assertEqual(response[0], _EnvironmentFactory().environment.from_string(RELEASE_TEMPLATE).render(release=release1))
         self.assertEqual(response[1], _EnvironmentFactory().environment.from_string(RELEASE_TEMPLATE).render(release=release2))
 
+
+
+class DraftAndMissingDateTestCase(unittest.TestCase):
+    """Releases without a usable published_at must not break the build."""
+
+    @staticmethod
+    def _release(name, published_at, draft=False):
+        release = MagicMock()
+        release.body = RELEASE_1
+        release.name = name
+        release.html_url = 'https://www.google.com/releases/' + (name or 'draft')
+        release.published_at = published_at
+        release.draft = draft
+        release.processed = False
+        return release
+
+    def test_draft_release_is_skipped(self):
+        """A draft is unpublished, so it is left out of the changelog.
+
+        GitHub returns no published_at for a draft; ghapi surfaces that as an
+        empty AttrDict, which previously reached datetime.fromisoformat and
+        raised "argument must be str", failing the whole docs build.
+        """
+        published = self._release('1.0.0', datetime(2023, 12, 1, 13, 46).astimezone().isoformat())
+        draft = self._release('', AttrDict({}), draft=True)
+        selected = _process_releases([draft, published])
+        self.assertEqual([r.name for r in selected], ['1.0.0'])
+
+    def test_release_with_empty_attrdict_date_is_skipped(self):
+        """A non-draft with no timestamp is skipped rather than raising."""
+        selected = _process_releases([self._release('1.0.0', AttrDict({}))])
+        self.assertEqual(selected, [])
+
+    def test_release_with_none_date_is_skipped(self):
+        """A ``None`` timestamp is also tolerated."""
+        selected = _process_releases([self._release('1.0.0', None)])
+        self.assertEqual(selected, [])
+
+    def test_string_date_is_parsed(self):
+        """An ISO string is converted to a datetime."""
+        selected = _process_releases([self._release('1.0.0', '2023-12-01T13:46:00Z')])
+        self.assertEqual(len(selected), 1)
+        self.assertIsInstance(selected[0].published_at, datetime)
+
+    def test_datetime_date_is_left_alone(self):
+        """An already-parsed datetime is passed through untouched."""
+        when = datetime(2023, 12, 1, 13, 46).astimezone()
+        selected = _process_releases([self._release('1.0.0', when)])
+        self.assertEqual(selected[0].published_at, when)
+
+    def test_coerce_published_at_returns_none_for_unusable_values(self):
+        """The coercion reports "no date" rather than raising."""
+        for value in (AttrDict({}), None, '', {}):
+            with self.subTest(value=value):
+                release = self._release('1.0.0', value)
+                self.assertIsNone(_coerce_published_at(release))
+
+
+class SyncTransportTestCase(unittest.TestCase):
+    """ghapi 2.x returns coroutines unless the sync transport is selected."""
+
+    def test_sync_flag_passed_when_supported(self):
+        """ghapi 2.x, which declares ``sync``, is asked for a sync client.
+
+        Without this, ``paged(...)`` yields an async generator and iterating it
+        raises "'async_generator' object is not iterable".
+        """
+        captured = {}
+
+        class FakeGhApi:
+            def __init__(self, token=None, gh_host=None, sync=False):
+                captured.update(token=token, gh_host=gh_host, sync=sync)
+
+        with patch.object(get_releases, 'GhApi', FakeGhApi):
+            get_releases._make_api('tok', 'https://api.github.com')
+        self.assertEqual(captured, {'token': 'tok', 'gh_host': 'https://api.github.com', 'sync': True})
+
+    def test_sync_flag_withheld_when_unsupported(self):
+        """ghapi 1.x does not declare ``sync``, so it is not passed.
+
+        1.x accepts arbitrary keyword arguments but does not necessarily ignore
+        them, so the flag is withheld rather than relied upon.
+        """
+        captured = {}
+
+        class FakeGhApi:
+            def __init__(self, token=None, gh_host=None, **kwargs):
+                captured.update(token=token, gh_host=gh_host, kwargs=kwargs)
+
+        with patch.object(get_releases, 'GhApi', FakeGhApi):
+            get_releases._make_api('tok', None)
+        self.assertEqual(captured['kwargs'], {})
+
+    def test_installed_ghapi_yields_a_synchronous_client(self):
+        """Against the real library, paged results are iterable.
+
+        Exercises the actual regression rather than a mock: a client whose
+        operations return coroutines cannot be iterated by ``paged``.
+        """
+        api = get_releases._make_api(None, None)
+        self.assertFalse(inspect.iscoroutinefunction(api.repos.list_releases.__call__))
 
 
 class AutprocessGithubLinksTestCase(unittest.TestCase):

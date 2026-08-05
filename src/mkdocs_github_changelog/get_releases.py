@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import inspect
 import json
 import os
 import re
@@ -22,6 +23,29 @@ from jinja2 import Environment
 from mkdocs_github_changelog import logger
 
 RELEASE_TEMPLATE = "# [{{release.name}}]({{release.html_url}})\n*Released at {{release.published_at.isoformat()}}*\n\n{{release.body}}"
+
+
+def _supports_sync() -> bool:
+    """Whether the installed ghapi accepts the ``sync`` constructor flag."""
+    return 'sync' in inspect.signature(GhApi.__init__).parameters
+
+
+def _make_api(token: str | None, github_api_url: str | None) -> GhApi:
+    """Build a GhApi that returns results rather than coroutines.
+
+    ghapi 2.0 made operation calls asynchronous by default, so ``paged(...)``
+    yields an async generator and iterating it raises ``'async_generator' object
+    is not iterable``. The same release added a ``sync`` flag selecting a
+    synchronous transport.
+
+    The flag does not exist on ghapi 1.x, which accepts arbitrary keyword
+    arguments without necessarily ignoring them, so it is passed only when the
+    installed signature declares it.
+    """
+    kwargs = {'token': token, 'gh_host': github_api_url}
+    if _supports_sync():
+        kwargs['sync'] = True
+    return GhApi(**kwargs)
 
 
 class _EnvironmentFactory():
@@ -95,15 +119,45 @@ def autoprocess_github_links(release):
     return release
 
 
+def _coerce_published_at(release) -> datetime | None:
+    """Return a release's ``published_at`` as a datetime, or None if it has none.
+
+    The value is checked by type rather than by Python version. An unpublished
+    release has no timestamp at all: the API returns ``null``, which ghapi
+    surfaces as an empty ``AttrDict`` rather than ``None``, so neither a
+    ``datetime`` nor ``str`` check matches and there is nothing to parse.
+
+    The version branch below is only about *how* to parse a string:
+    ``fromisoformat`` cannot handle the trailing ``Z`` of a GitHub timestamp
+    before 3.11, so dateutil is used there.
+    """
+    value = getattr(release, 'published_at', None)
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value:
+        if sys.version_info.major >= 3 and sys.version_info.minor < 11:
+            return parse(value)
+        return datetime.fromisoformat(value)
+    return None
+
+
 def _process_releases(releases, match: str | None = None, autoprocess: bool = True):
     selected_releases = []
     for release in releases:
-        # Convert the published_at to datetime object
-        if not isinstance(release.published_at, datetime):
-            if sys.version_info.major >= 3 and sys.version_info.minor < 11:
-                release.published_at = parse(release.published_at)
-            else:
-                release.published_at = datetime.fromisoformat(release.published_at)
+        # Drafts are unpublished, so they have no published_at and an empty
+        # name; they render as a broken, dateless entry and do not belong in a
+        # changelog. Skipping them also avoids failing the whole build on the
+        # missing timestamp.
+        if getattr(release, 'draft', False):
+            logger.debug(f'Skipping draft release {release.html_url}')
+            continue
+        published_at = _coerce_published_at(release)
+        if published_at is None:
+            # Defensive: a published release should always carry a timestamp, so
+            # warn rather than fail the build if one somehow does not.
+            logger.warning(f'Skipping release with no published_at: {release.html_url}')
+            continue
+        release.published_at = published_at
         if autoprocess is None or autoprocess:
             autoprocess_github_links(release)
         if (match and re.match(match, release.name) is not None) or not match:
@@ -124,7 +178,7 @@ def get_releases_as_markdown(
     if github_api_url is not None:
         github_api_url = github_api_url.rstrip('/')
     logger.info('Getting releases from github')
-    api = GhApi(token=token, gh_host=github_api_url)
+    api = _make_api(token, github_api_url)
     releases = []
     for page in paged(api.repos.list_releases, organisation_or_user, repository, per_page=100):
         releases += page
