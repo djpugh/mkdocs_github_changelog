@@ -243,6 +243,22 @@ class SyncTransportTestCase(unittest.TestCase):
         api = get_releases._make_api(None, None)
         self.assertFalse(inspect.iscoroutinefunction(api.repos.list_releases.__call__))
 
+    def test_paged_is_the_synchronous_pager(self):
+        """The ``paged`` name must not resolve to an async generator function.
+
+        On ghapi 2.x ``paged`` is async even against a sync client, so the
+        module binds ``sync_paged`` instead; the bare name is what the call site
+        iterates.
+        """
+        self.assertFalse(inspect.isasyncgenfunction(get_releases.paged))
+
+    def test_paged_prefers_sync_paged_when_available(self):
+        """Where the installed ghapi offers ``sync_paged``, that is what is used."""
+        import ghapi.all
+
+        expected = getattr(ghapi.all, 'sync_paged', ghapi.all.paged)
+        self.assertIs(get_releases.paged, expected)
+
 
 class AutprocessGithubLinksTestCase(unittest.TestCase):
 

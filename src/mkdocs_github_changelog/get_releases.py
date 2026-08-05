@@ -17,10 +17,17 @@ if sys.version_info.major >= 3 and sys.version_info.minor < 11:
     from dateutil.parser import parse
 
 
-from ghapi.all import GhApi, paged
+import ghapi.all
+from ghapi.all import GhApi
 from jinja2 import Environment
 
 from mkdocs_github_changelog import logger
+
+# On ghapi 2.x, paged() is an async generator even against a synchronous client,
+# so iterating it raises "'async_generator' object is not iterable"; sync_paged()
+# is its synchronous form. On 1.x, paged() is already synchronous and sync_paged
+# does not exist. Bound to one name so the call site is version-agnostic.
+paged = getattr(ghapi.all, 'sync_paged', ghapi.all.paged)
 
 RELEASE_TEMPLATE = "# [{{release.name}}]({{release.html_url}})\n*Released at {{release.published_at.isoformat()}}*\n\n{{release.body}}"
 
