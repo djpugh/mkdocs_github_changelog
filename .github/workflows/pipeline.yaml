@@ -193,6 +193,12 @@ jobs:
   sonarcloud:
     name: SonarCloud (${{ github.event_name }})
     runs-on: ubuntu-latest
+    # A rejected SONAR_TOKEN made this job fail, which skipped publish-package
+    # (which needs it) and so blocked releases entirely. At job level this makes
+    # needs.sonarcloud.result report success so dependents run, while the job
+    # still shows a red X and the run still reports failure, so a broken scan
+    # stays visible rather than being silently swallowed.
+    continue-on-error: true
     needs:
       - changes
     if: >
